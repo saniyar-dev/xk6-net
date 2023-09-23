@@ -1,8 +1,9 @@
 package compare
 
 import (
-	"fmt"
+	"context"
 	"net"
+	"time"
 
 	"go.k6.io/k6/js/modules"
 )
@@ -50,23 +51,27 @@ type Net struct {
 }
 
 type Connection struct {
-	conn net.Conn
+	Conn net.Conn
 }
 
 func (c *Connection) Write(msg string) error {
-	if _, err := fmt.Fprint(c.conn, msg); err != nil {
+	if _, err := c.Conn.Write([]byte(msg)); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (t *Net) Open(addr string) (Connection, error) {
-	conn, err := net.Dial("tcp", addr)
+	var d net.Dialer
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return Connection{}, err
 	}
 	return Connection{
-		conn: conn,
+		Conn: conn,
 	}, nil
 }
 

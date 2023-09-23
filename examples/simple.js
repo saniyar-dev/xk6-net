@@ -13,7 +13,7 @@ export const options = {
 };
 
 export default async function() {
-  const socket = await net.open("192.168.1.1:80");
+  const socket = await net.open("127.0.0.1:2000");
 
   await socket.write("GET / HTTP/1.1\r\n\r\n");
 }
