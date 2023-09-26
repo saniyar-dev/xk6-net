@@ -13,7 +13,9 @@ export const options = {
 };
 
 export default async function() {
-  const socket = await net.open("127.0.0.1:2000");
+  const socket = await net.open("127.0.0.1:2000", {
+    KeepAlive: 10,
+  });
 
   await socket.write("GET / HTTP/1.1\r\n\r\n");
 }

@@ -2,6 +2,7 @@ package compare
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"time"
 
@@ -61,8 +62,31 @@ func (c *Connection) Write(msg string) error {
 	return nil
 }
 
-func (t *Net) Open(addr string) (Connection, error) {
-	var d net.Dialer
+type DialerConfig struct {
+	KeepAlive int64
+}
+
+func (d *DialerConfig) ParseDialer() (net.Dialer, error) {
+	return net.Dialer{
+		KeepAlive: time.Duration(d.KeepAlive * 1000000000),
+	}, nil
+}
+
+func (t *Net) Open(addr string, input map[string]interface{}) (Connection, error) {
+	jsonData, err := json.Marshal(input)
+	if err != nil {
+		return Connection{}, err
+	}
+	var dConf DialerConfig
+	err = json.Unmarshal(jsonData, &dConf)
+	if err != nil {
+		return Connection{}, err
+	}
+
+	d, err := dConf.ParseDialer()
+	if err != nil {
+		return Connection{}, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
