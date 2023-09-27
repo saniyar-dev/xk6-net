@@ -1,8 +1,10 @@
 package compare
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
 	"net"
+	"time"
 
 	"go.k6.io/k6/js/modules"
 )
@@ -50,23 +52,50 @@ type Net struct {
 }
 
 type Connection struct {
-	conn net.Conn
+	Conn net.Conn
 }
 
 func (c *Connection) Write(msg string) error {
-	if _, err := fmt.Fprint(c.conn, msg); err != nil {
+	if _, err := c.Conn.Write([]byte(msg)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *Net) Open(addr string) (Connection, error) {
-	conn, err := net.Dial("tcp", addr)
+type DialerConfig struct {
+	KeepAlive int64
+}
+
+func (d *DialerConfig) ParseDialer() (net.Dialer, error) {
+	return net.Dialer{
+		KeepAlive: time.Duration(d.KeepAlive * 1000000000),
+	}, nil
+}
+
+func (t *Net) Open(addr string, input map[string]interface{}) (Connection, error) {
+	jsonData, err := json.Marshal(input)
+	if err != nil {
+		return Connection{}, err
+	}
+	var dConf DialerConfig
+	err = json.Unmarshal(jsonData, &dConf)
+	if err != nil {
+		return Connection{}, err
+	}
+
+	d, err := dConf.ParseDialer()
+	if err != nil {
+		return Connection{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	conn, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return Connection{}, err
 	}
 	return Connection{
-		conn: conn,
+		Conn: conn,
 	}, nil
 }
 
